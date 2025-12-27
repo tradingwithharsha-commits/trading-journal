@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>H A R S H A trading Journal</title>
+<style>
+:root{--bg:#0b0f14;--panel:#111823;--panel2:#0f1622;--text:#e6edf3;--muted:#9aa4b2;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--radius:14px}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
+header{padding:16px 24px;border-bottom:1px solid #1b2330;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:18px;margin:0}
+.header-btns{display:flex; gap:10px; align-items:center}
+.balance-input{background:#111823; border:1px solid #333; color:var(--green); padding:8px; border-radius:8px; width:100px; font-weight:bold}
+button{background:#0c1320;border:1px solid #1b2330;color:var(--text);border-radius:10px;padding:8px 14px;cursor:pointer}
+main{padding:20px 24px;display:grid;gap:16px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid #1b2330;border-radius:var(--radius);padding:16px}
+.kpi{grid-column:span 2}
+.label{color:var(--muted);font-size:11px;text-transform: uppercase;letter-spacing: 0.5px;margin-bottom: 4px}
+.value{font-size:20px;font-weight:700}
+.green{color:var(--green)}
+.red{color:var(--red)}
+.white{color:#ffffff}
+canvas{width:100%!important;height:100%!important}
+.chart{grid-column:span 8;height:300px}
+.side{grid-column:span 4;height:300px}
+
+#panel{position:fixed;top:0;right:-60%;width:60%;height:100%;background:#0c1320;border-left:1px solid #1b2330;transition:.3s;padding:20px;overflow:auto;z-index:20}
+#panel.open{right:0}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+input,select,textarea{background:#111823;border:1px solid #1b2330;color:var(--text);border-radius:8px;padding:8px;font-size:13px}
+textarea{grid-column:span 2;resize:vertical}
+.full{grid-column:span 2; margin-top: 10px; width: 100%; padding: 12px; background: var(--blue); border: none; font-weight: bold; color:white; cursor:pointer}
+.close-btn{background: transparent; border: 1px solid #333; margin-top: 10px; width: 100%; cursor:pointer}
+
+.tabs{display:flex;gap:8px;margin-bottom:10px}
+.tab{padding:6px 10px;border:1px solid #1b2330;border-radius:8px;cursor:pointer;color:var(--muted)}
+.tab.active{color:var(--text);border-color:var(--blue)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border-bottom:1px solid #1b2330;padding:10px 8px;text-align:left;vertical-align:middle}
+th{color:var(--muted); font-weight: 500}
+.thumb{width:45px;height:45px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #333}
+.tag{padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; text-transform:uppercase}
+.tag-good{background:rgba(34,197,94,0.2); color:var(--green)}
+.tag-bad{background:rgba(239,68,68,0.2); color:var(--red)}
+
+#imgModal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:100}
+#imgModal img{max-width:95%;max-height:95%;border-radius:8px}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px}
+
+@media(max-width:1000px){.kpi{grid-column:span 4}.chart,.side{grid-column:span 12}#panel{width:100%}}
+</style>
+</head>
+<body>
+<header>
+<h1>H A R S H A trading Journal</h1>
+<div class="header-btns">
+    <div style="text-align:right">
+        <div class="label" style="margin-bottom:2px">Start Balance $</div>
+        <input type="number" id="startBalance" class="balance-input" value="1000" onchange="render()">
+    </div>
+    <button onclick="openPanel()">➕ Add Trade</button>
+    <button onclick="exportCSV()">Download CSV</button>
+</div>
+</header>
+
+<main>
+<section class="grid">
+<div class="card kpi"><div class="label">Total Return</div><div class="value" id="kGrowth">0%</div></div>
+<div class="card kpi"><div class="label">Current Balance</div><div class="value" id="kBalance">$0</div></div>
+<div class="card kpi"><div class="label">Net P&L</div><div class="value" id="kProfit">$0</div></div>
+<div class="card kpi"><div class="label">Win Rate</div><div class="value" id="kWin">0%</div></div>
+<div class="card kpi"><div class="label">Discipline</div><div class="value white" id="kDiscipline">100%</div></div>
+<div class="card kpi"><div class="label">Best Pair</div><div class="value white" id="kBestPair">-</div></div>
+</section>
+
+<section class="grid">
+<div class="card chart"><h3>Account Growth ($)</h3><canvas id="equity"></canvas></div>
+<div class="card side"><h3>Profit by Session</h3><canvas id="sessionChart"></canvas></div>
+</section>
+
+<section class="card">
+<div class="filters">
+<select id="fPL"><option value="">P&L All</option><option value="pos">Profit +</option><option value="neg">Loss -</option></select>
+<select id="fSide"><option value="">Side All</option><option>Buy</option><option>Sell</option></select>
+<select id="fModel"><option value="">Model All</option><option>Model 1</option><option>Model 2</option><option>Model 3</option></select>
+<select id="fSession"><option value="">Session All</option><option>Asian</option><option>London</option><option>New York</option></select>
+<select id="fMistake"><option value="">Execution All</option><option>Perfect</option><option>Mistake</option></select>
+</div>
+<table>
+<thead>
+<tr><th>Pair</th><th>Date</th><th>RR</th><th>P&L</th><th>Side</th><th>Model</th><th>Session</th><th>Execution</th><th>Before</th><th>After</th><th>Actions</th></tr>
+</thead>
+<tbody id="rows"></tbody>
+</table>
+</section>
+</main>
+
+<div id="panel">
+<h3>Trade Entry</h3>
+<div class="tabs">
+<div class="tab active" onclick="openTab('details')">Details</div>
+<div class="tab" onclick="openTab('images')">Images</div>
+</div>
+
+<div id="details" class="tab-content active">
+<div class="form-grid">
+<input id="pair" placeholder="Pair (e.g. BTCUSD)" />
+<input id="date" type="date" />
+<input id="rr" type="number" step="0.1" placeholder="Risk/Reward (RR)" />
+<input id="profit" type="number" step="0.01" placeholder="Net Profit/Loss" />
+<select id="side"><option>Buy</option><option>Sell</option></select>
+<select id="model"><option>Model 1</option><option>Model 2</option><option>Model 3</option></select>
+<select id="session"><option>Asian</option><option>London</option><option>New York</option></select>
+<select id="mistake">
+    <option value="Perfect">Perfect Execution</option>
+    <option value="FOMO">FOMO Entry</option>
+    <option value="Revenge">Revenge Trade</option>
+    <option value="Early Exit">Closed Early (Fear)</option>
+    <option value="Stop Moved">Moved Stop Loss</option>
+    <option value="Over-Leverage">Over-Leveraged</option>
+</select>
+<textarea id="comment" placeholder="Describe why you took this trade..."></textarea>
+</div>
+</div>
+
+<div id="images" class="tab-content">
+<div class="form-grid">
+<div><label class="label">Before Entry (Setup)</label><input type="file" id="beforeImg" accept="image/*" /></div>
+<div><label class="label">After Entry (Result)</label><input type="file" id="afterImg" accept="image/*" /></div>
+</div>
+</div>
+
+<button class="full" onclick="saveTrade()">Save Trade</button>
+<button class="close-btn" onclick="closePanel()">Cancel</button>
+</div>
+
+<div id="imgModal" onclick="this.style.display='none'"><img /></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const panel = document.getElementById('panel');
+const rows = document.getElementById('rows');
+const kGrowth = document.getElementById('kGrowth'), kBalance = document.getElementById('kBalance'), kProfit = document.getElementById('kProfit'), kWin = document.getElementById('kWin'), kDiscipline = document.getElementById('kDiscipline'), kBestPair = document.getElementById('kBestPair');
+const startBalInput = document.getElementById('startBalance');
+const pair = document.getElementById('pair'), date = document.getElementById('date'), rr = document.getElementById('rr'), profit = document.getElementById('profit'), side = document.getElementById('side'), model = document.getElementById('model'), session = document.getElementById('session'), mistake = document.getElementById('mistake'), comment = document.getElementById('comment'), beforeImg = document.getElementById('beforeImg'), afterImg = document.getElementById('afterImg');
+const fPL = document.getElementById('fPL'), fSide = document.getElementById('fSide'), fModel = document.getElementById('fModel'), fSession = document.getElementById('fSession'), fMistake = document.getElementById('fMistake');
+
+let trades = JSON.parse(localStorage.getItem('trades') || '[]');
+let editIndex = null;
+
+function openPanel(){ panel.classList.add('open'); }
+function closePanel(){ panel.classList.remove('open'); editIndex=null; clearForm(); }
+function clearForm() { [pair, date, rr, profit, comment, beforeImg, afterImg].forEach(i => i.value = ''); mistake.value="Perfect"; }
+function openTab(id){ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); document.querySelector(`[onclick="openTab('${id}')"]`).classList.add('active'); document.getElementById(id).classList.add('active'); }
+function toBase64(file){return new Promise(res=>{if(!file) return res(null);const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(file);});}
+
+async function saveTrade(){
+  const bImg = beforeImg.files[0] ? await toBase64(beforeImg.files[0]) : (editIndex !== null ? trades[editIndex].before : null);
+  const aImg = afterImg.files[0] ? await toBase64(afterImg.files[0]) : (editIndex !== null ? trades[editIndex].after : null);
+  const t = { pair: pair.value.toUpperCase(), date: date.value, rr: Number(rr.value), profit: Number(profit.value), side: side.value, model: model.value, session: session.value, mistake: mistake.value, comment: comment.value, before: bImg, after: aImg };
+  if(editIndex!==null) trades[editIndex]=t; else trades.push(t);
+  localStorage.setItem('trades',JSON.stringify(trades));
+  closePanel(); render();
+}
+
+function editTrade(i){ const t=trades[i]; pair.value=t.pair;date.value=t.date;rr.value=t.rr;profit.value=t.profit;side.value=t.side;model.value=t.model;session.value=t.session;mistake.value=t.mistake||'Perfect';comment.value=t.comment; editIndex=i; openPanel(); }
+function deleteTrade(i){ if(confirm('Delete?')){ trades.splice(i,1); localStorage.setItem('trades',JSON.stringify(trades)); render(); } }
+
+const equityChart=new Chart(document.getElementById('equity'),{type:'line',data:{labels:[],datasets:[{data:[],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',tension:.3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'#1b2330'}}}}});
+const sessChart=new Chart(document.getElementById('sessionChart'),{type:'bar',data:{labels:['Asian','London','New York'],datasets:[{data:[0,0,0],backgroundColor:['#3b82f6','#22c55e','#ef4444']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'#1b2330'}}}}});
+
+function render(){
+  rows.innerHTML='';
+  let startBal = Number(startBalInput.value) || 0;
+  let wins=0, totalProfit=0, perfectCount=0;
+  let equity=[startBal], run=startBal;
+  let pairStats = {}, sessProfits = { 'Asian': 0, 'London': 0, 'New York': 0 };
+
+  const list=trades.filter(t=>{
+    if(fPL.value==='pos' && t.profit<=0) return false;
+    if(fPL.value==='neg' && t.profit>=0) return false;
+    if(fSide.value && t.side!==fSide.value) return false;
+    if(fModel.value && t.model!==fModel.value) return false;
+    if(fSession.value && t.session!==fSession.value) return false;
+    if(fMistake.value==='Perfect' && t.mistake!=='Perfect') return false;
+    if(fMistake.value==='Mistake' && t.mistake==='Perfect') return false;
+    return true;
+  });
+
+  list.forEach((t,idx)=>{
+    if(t.profit>0) wins++;
+    if(t.mistake === 'Perfect') perfectCount++;
+    totalProfit+=t.profit;
+    run+=t.profit;
+    equity.push(run);
+    pairStats[t.pair] = (pairStats[t.pair] || 0) + t.profit;
+    sessProfits[t.session] = (sessProfits[t.session] || 0) + t.profit;
+
+    rows.innerHTML+=`<tr>
+      <td><b>${t.pair}</b></td><td>${t.date}</td><td>${t.rr}</td>
+      <td class="${t.profit>0?'green':t.profit<0?'red':'white'}">${t.profit.toFixed(2)}</td>
+      <td>${t.side}</td><td>${t.model}</td><td>${t.session}</td>
+      <td><span class="tag ${t.mistake==='Perfect'?'tag-good':'tag-bad'}">${t.mistake}</span></td>
+      <td>${t.before?`<img src="${t.before}" class="thumb" onclick="zoomImg('${t.before}')">`:''}</td>
+      <td>${t.after?`<img src="${t.after}" class="thumb" onclick="zoomImg('${t.after}')">`:''}</td>
+      <td><button onclick="editTrade(${idx})">Edit</button> <button onclick="deleteTrade(${idx})" style="color:var(--red)">X</button></td>
+    </tr>`;
+  });
+
+  // KPI Calculations
+  kProfit.textContent=`$${totalProfit.toFixed(2)}`;
+  kProfit.className='value '+(totalProfit>0?'green':totalProfit<0?'red':'white');
+  
+  const currentBalance = startBal + totalProfit;
+  kBalance.textContent = `$${currentBalance.toFixed(2)}`;
+  
+  const growthPct = startBal !== 0 ? (totalProfit / startBal) * 100 : 0;
+  kGrowth.textContent = growthPct.toFixed(1) + '%';
+  kGrowth.className = 'value ' + (growthPct >= 0 ? 'green' : 'red');
+
+  kWin.textContent=list.length?((wins/list.length)*100).toFixed(1)+'%':'0%';
+  kDiscipline.textContent=list.length?((perfectCount/list.length)*100).toFixed(0)+'%':'100%';
+  
+  let bp = Object.entries(pairStats).sort((a,b)=>b[1]-a[1])[0]; kBestPair.textContent = bp ? bp[0] : '-';
+
+  // Update Charts
+  equityChart.data.labels=equity.map((_,i)=>i===0 ? 'Start' : 'T'+i); 
+  equityChart.data.datasets[0].data=equity; 
+  equityChart.update();
+
+  sessChart.data.datasets[0].data=[sessProfits['Asian'], sessProfits['London'], sessProfits['New York']]; 
+  sessChart.update();
+}
+
+function exportCSV(){ let csv='Pair,Date,RR,Profit,Side,Model,Session,Execution,Comment\n'; trades.forEach(t=>csv+=`${t.pair},${t.date},${t.rr},${t.profit},${t.side},${t.model},${t.session},${t.mistake},"${t.comment}"\n`); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='Harsha_Journal.csv'; a.click(); }
+function zoomImg(src){ const m=document.getElementById('imgModal'); m.style.display='flex'; m.querySelector('img').src=src; }
+[fPL,fSide,fModel,fSession,fMistake].forEach(el=>el.addEventListener('change',render));
+render();
+</script>
+</body>
+</html>
