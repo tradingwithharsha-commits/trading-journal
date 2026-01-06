@@ -14,7 +14,7 @@ header{width: 100%; padding:16px 24px; border-bottom:1px solid #1b2330; display:
 h1{font-size:18px; margin:0}
 .header-btns{display:flex; gap:8px; align-items:center}
 .balance-input{background:#111823; border:1px solid #333; color:var(--green); padding:8px; border-radius:8px; width:90px; font-weight:bold}
-select.profile-select, select.year-select, .growth-view-select{background:#1b2330; color:var(--blue); border:1px solid var(--blue); padding:8px; border-radius:8px; font-weight:bold; cursor:pointer}
+select.profile-select, select.year-select{background:#1b2330; color:var(--blue); border:1px solid var(--blue); padding:8px; border-radius:8px; font-weight:bold; cursor:pointer}
 button{background:#0c1320;border:1px solid #1b2330;color:var(--text);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:12px}
 
 main{width: 100%; max-width: 1200px; padding:20px 24px; display:flex; flex-direction: column; gap:16px;}
@@ -35,20 +35,32 @@ main{width: 100%; max-width: 1200px; padding:20px 24px; display:flex; flex-direc
 .month-rect { height: 100px; border: 2px solid rgba(59, 130, 246, 0.5); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
 .month-rect:hover { transform: translateY(-3px); border-color: rgba(59, 130, 246, 1); background: rgba(59, 130, 246, 0.1); }
 .month-name { color: white; font-weight: bold; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; }
+.month-pnl { font-size: 16px; font-weight: 800; }
 
 #monthModal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
 .modal-content { background: var(--panel); width: 95%; max-width: 1100px; max-height: 85vh; border-radius: 14px; border: 1px solid #333; overflow: hidden; display: flex; flex-direction: column; }
-
-/* New Popup Header Style */
-.popup-kpi-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #1b2330; border-bottom: 1px solid #333; }
-.popup-kpi-item { background: #0c1320; padding: 15px; text-align: center; }
 
 #panel{position:fixed; top:0; right:-100%; width:420px; height:100%; background:#0c1320; border-left:1px solid #1b2330; transition:.4s; padding:24px; overflow:auto; z-index:110}
 #panel.open{right:0}
 .form-grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items: start;}
 .form-grid h3, .form-grid textarea, .form-grid .full-col, .form-grid .btn-container { grid-column: span 2; }
 
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 input,select,textarea{background:#111823; border:1px solid #333; color:var(--text); border-radius:8px; padding:12px; width: 100%; font-size: 13px;}
+textarea { min-height: 100px; resize: vertical; }
+
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-group label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.btn-container { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px;}
+.save-btn { flex: 1; height: 48px; background: var(--blue); border: none; font-weight: bold; color: white; border-radius: 10px; cursor: pointer; }
+.cancel-btn { flex: 1; height: 48px; background: transparent; border: 1px solid #333; color: var(--muted); border-radius: 10px; cursor: pointer; }
+
+#imageLightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; cursor: pointer; }
+#lightboxImg { max-width: 90%; max-height: 85%; transition: transform 0.3s ease; cursor: zoom-in; object-fit: contain; }
+#lightboxImg.zoomed { transform: scale(1.8); cursor: zoom-out; }
+.lightbox-close { position: absolute; top: 20px; right: 20px; font-size: 30px; color: white; background: none; border: none; cursor: pointer; }
+
 table{width:100%; border-collapse:collapse; font-size:12px}
 th,td{border-bottom:1px solid #1b2330; padding:10px 8px; text-align:left}
 
@@ -56,6 +68,7 @@ th,td{border-bottom:1px solid #1b2330; padding:10px 8px; text-align:left}
     .month-grid { grid-template-columns: repeat(3, 1fr); }
     .kpi { grid-column: span 4; }
     .chart-card, .side-card { grid-column: span 12; height: 300px; }
+    #panel { width: 100%; }
 }
 </style>
 </head>
@@ -64,13 +77,10 @@ th,td{border-bottom:1px solid #1b2330; padding:10px 8px; text-align:left}
 <header>
     <h1>H A R S H A</h1>
     <div class="header-btns">
-        <select id="growthView" class="growth-view-select" onchange="render()">
-            <option value="all">All-Time Growth</option>
-            <option value="yearly">Yearly Growth</option>
-        </select>
         <select id="profileSwitcher" class="profile-select" onchange="changeProfile()"></select>
         <select id="yearSwitcher" class="year-select" onchange="render()"></select>
         <button onclick="createProfile()">📁 New Profile</button>
+        <button onclick="deleteProfile()" style="color:var(--red); border-color:var(--red)">🗑️ Delete Profile</button>
         <div style="text-align:right">
             <div class="label" style="margin-bottom:2px">Start $</div>
             <input type="number" id="startBalance" class="balance-input" value="1000" onchange="updateStartBalance()">
@@ -81,7 +91,7 @@ th,td{border-bottom:1px solid #1b2330; padding:10px 8px; text-align:left}
 
 <main>
     <section class="grid">
-        <div class="card kpi"><div class="label" id="growthLabel">Growth</div><div class="value" id="kGrowth">0%</div></div>
+        <div class="card kpi"><div class="label">Growth</div><div class="value" id="kGrowth">0%</div></div>
         <div class="card kpi"><div class="label">Balance</div><div class="value" id="kBalance">$0</div></div>
         <div class="card kpi"><div class="label">P&L</div><div class="value" id="kProfit">$0</div></div>
         <div class="card kpi"><div class="label">Win Rate</div><div class="value" id="kWin">0%</div></div>
@@ -100,42 +110,89 @@ th,td{border-bottom:1px solid #1b2330; padding:10px 8px; text-align:left}
         </div>
     </section>
 
-    <div class="month-container"><section class="month-grid" id="monthGrid"></section></div>
+    <section class="card" style="margin-top: 10px;">
+        <h3 style="margin:0 0 10px 0; font-size:14px;">Pair Performance Analysis</h3>
+        <table>
+            <thead>
+                <tr style="color:var(--muted); font-size:11px; text-transform:uppercase;">
+                    <th>Trading Pair</th>
+                    <th>Total Trades</th>
+                    <th>Win Rate</th>
+                    <th>Net P&L ($)</th>
+                    <th>Strength</th>
+                </tr>
+            </thead>
+            <tbody id="pairStatsRows"></tbody>
+        </table>
+    </section>
+
+    <div class="month-container">
+        <section class="month-grid" id="monthGrid"></section>
+    </div>
+
+    <section class="card recent-activity">
+        <h3>Recent Activity (Last 10)</h3>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Pair</th><th>Model</th><th>Side</th><th>Profit</th><th>Action</th></tr>
+            </thead>
+            <tbody id="recentRows"></tbody>
+        </table>
+    </section>
 </main>
 
 <div id="monthModal">
     <div class="modal-content" id="captureTarget">
-        <div class="popup-kpi-bar">
-            <div class="popup-kpi-item"><div class="label">Monthly Profit</div><div id="popMProfit" class="value" style="font-size:18px;">$0</div></div>
-            <div class="popup-kpi-item"><div class="label">Monthly Growth</div><div id="popMGrowth" class="value" style="font-size:18px;">0%</div></div>
-            <div class="popup-kpi-item"><div class="label">Best Pair</div><div id="popMBest" class="value" style="font-size:18px;">-</div></div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px; background: #0c1320; border-bottom: 1px solid #1b2330;">
+            <div style="text-align: center;">
+                <div class="label">Monthly Profit</div>
+                <div class="value" id="mPopProfit" style="font-size: 16px;">$0</div>
+            </div>
+            <div style="text-align: center;">
+                <div class="label">Monthly Growth</div>
+                <div class="value" id="mPopGrowth" style="font-size: 16px;">0%</div>
+            </div>
+            <div style="text-align: center;">
+                <div class="label">Best Pair</div>
+                <div class="value" id="mPopBestPair" style="font-size: 16px;">-</div>
+            </div>
         </div>
-        <div style="padding: 10px 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #111823;">
+        <div style="padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #111823;">
             <h2 id="modalTitle" style="margin:0">Month</h2>
             <div style="display: flex; gap: 8px;">
                 <button onclick="downloadCSV()" style="background: #22c55e; border:none; color:white;">📥 CSV</button>
+                <button onclick="downloadJPEG()" style="background: #3b82f6; border:none; color:white;">🖼️ JPEG</button>
                 <button onclick="closeMonthModal()">Close</button>
             </div>
         </div>
         <div style="padding: 20px; overflow-y: auto; background: #111823;">
             <table id="monthTable">
-                <thead><tr><th>Pair</th><th>Date</th><th>P&L</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th>Pair</th><th>Date</th><th>Model</th><th>P&L</th><th>Status</th><th>Screenshots</th><th>Action</th></tr></thead>
                 <tbody id="monthRows"></tbody>
             </table>
         </div>
     </div>
 </div>
 
+<div id="imageLightbox" onclick="closeLightbox()">
+    <button class="lightbox-close">&times;</button>
+    <img id="lightboxImg" src="" alt="Zoomable Trade" onclick="toggleZoom(event)">
+</div>
+
 <div id="panel">
     <div class="form-grid">
-        <h3 id="panelHeader">New Trade</h3>
-        <div class="field-group"><label>Pair</label><input id="pair" placeholder="e.g. GOLD"/></div>
+        <h3 id="panelHeader" style="margin: 0 0 10px 0;">New Entry</h3>
+        <div class="field-group"><label>Pair</label><input id="pair" placeholder="e.g. BTCUSD"/></div>
         <div class="field-group"><label>Date</label><input id="date" type="date"/></div>
-        <div class="field-group"><label>Profit ($)</label><input id="profit" type="number" step="0.01"/></div>
+        <div class="field-group"><label>Model</label><select id="model"><option value="Model 1">Model 1</option><option value="Model 2">Model 2</option><option value="Model 3">Model 3</option></select></div>
+        <div class="field-group"><label>Profit/Loss ($)</label><input id="profit" type="number" step="0.01" placeholder="0.00"/></div>
         <div class="field-group"><label>Side</label><select id="side"><option>Buy</option><option>Sell</option></select></div>
         <div class="field-group"><label>Session</label><select id="session"><option>Asian</option><option>London</option><option>New York</option></select></div>
-        <div class="field-group full-col"><label>Execution</label><select id="mistake"><option>Perfect Execution</option><option>FOMO Entry</option></select></div>
-        <div class="btn-container"><button class="save-btn" onclick="saveTrade()">Save</button><button class="cancel-btn" onclick="closePanel()">Cancel</button></div>
+        <div class="field-group full-col"><label>Psychology / Execution</label><select id="mistake"><option value="Perfect Execution">Perfect Execution</option><option value="FOMO Entry">FOMO Entry</option><option value="Revenge trade">Revenge trade</option><option value="Closed Early (Fear)">Closed Early (Fear)</option><option value="Moved Stop Loss">Moved Stop Loss</option><option value="Over-Leveraged">Over-Leveraged</option></select></div>
+        <div class="field-group"><label>Setup Screenshot</label><input type="file" id="imgBefore" accept="image/*"></div>
+        <div class="field-group"><label>Result Screenshot</label><input type="file" id="imgAfter" accept="image/*"></div>
+        <div class="field-group full-col"><label>Notes</label><textarea id="comment" placeholder="Describe the trade setup..."></textarea></div>
+        <div class="btn-container"><button class="save-btn" onclick="saveTrade()">Save Trade</button><button class="cancel-btn" onclick="closePanel()">Cancel</button></div>
     </div>
 </div>
 
@@ -144,85 +201,167 @@ let trades = JSON.parse(localStorage.getItem('trades') || '[]');
 let profiles = JSON.parse(localStorage.getItem('h_profiles') || '["Main Account"]');
 let currentProfile = localStorage.getItem('h_current_profile') || profiles[0];
 let profileBalances = JSON.parse(localStorage.getItem('h_balances') || '{}');
+let editIndex = null;
+let activeMonthTrades = [];
 
-const equityChart = new Chart(document.getElementById('equity'), { type:'line', data:{ labels:[], datasets:[{ data:[], borderColor:'#3b82f6', fill:true, tension:0.3 }] }, options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
-const sessChart = new Chart(document.getElementById('sessionChart'), { type:'bar', data:{ labels:['Asian','London','New York'], datasets:[{ data:[0,0,0], backgroundColor:['#3b82f6','#22c55e','#ef4444'] }] }, options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
+const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#9aa4b2' }, grid: { display: false } }, y: { ticks: { color: '#9aa4b2' }, grid: { color: '#1b2330' } } } };
+const equityChart = new Chart(document.getElementById('equity'), { type:'line', data:{ labels:[], datasets:[{ data:[], borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)', fill:true, tension:0.3 }] }, options: chartOptions });
+const sessChart = new Chart(document.getElementById('sessionChart'), { type:'bar', data:{ labels:['Asian','London','New York'], datasets:[{ data:[0,0,0], backgroundColor:['#3b82f6','#22c55e','#ef4444'] }] }, options: chartOptions });
 
 function init() { initProfiles(); initYears(); render(); }
 function initProfiles() { 
     const ps = document.getElementById('profileSwitcher'); ps.innerHTML = ''; 
-    profiles.forEach(p => { let opt = document.createElement('option'); opt.value = p; opt.textContent = p; if(p===currentProfile) opt.selected=true; ps.appendChild(opt); }); 
+    profiles.forEach(p => { 
+        let opt = document.createElement('option'); opt.value = p; opt.textContent = p; 
+        if(p===currentProfile) opt.selected=true; ps.appendChild(opt); 
+    }); 
     document.getElementById('startBalance').value = profileBalances[currentProfile] || 1000; 
 }
-function initYears() { const ys = document.getElementById('yearSwitcher'); ys.innerHTML = '<option value="2025">2025</option>'; }
+function initYears() { const years = [...new Set(trades.map(t => new Date(t.date).getFullYear()))]; if(!years.includes(new Date().getFullYear())) years.push(new Date().getFullYear()); years.sort((a,b)=>b-a); const ys = document.getElementById('yearSwitcher'); ys.innerHTML = ''; years.forEach(y => { ys.innerHTML += `<option value="${y}">${y}</option>`; }); }
 
 function render() {
     const selYear = parseInt(document.getElementById('yearSwitcher').value);
-    const viewMode = document.getElementById('growthView').value;
-    const profTrades = trades.filter(t => t.profile === currentProfile);
-    const yearTrades = profTrades.filter(t => new Date(t.date).getFullYear() === selYear).sort((a,b)=>new Date(a.date)-new Date(b.date));
-
-    let startBal = Number(document.getElementById('startBalance').value);
-    let totalPnl = profTrades.reduce((s, t) => s + t.profit, 0);
-    let yearPnl = yearTrades.reduce((s, t) => s + t.profit, 0);
-
-    // Growth Logic
-    let growthVal = viewMode === 'all' ? (totalPnl/startBal)*100 : (yearPnl/startBal)*100;
-    document.getElementById('growthLabel').textContent = viewMode === 'all' ? 'All-Time Growth' : 'Yearly Growth';
-    document.getElementById('kGrowth').textContent = growthVal.toFixed(1) + '%';
-    document.getElementById('kGrowth').style.color = growthVal >= 0 ? 'var(--green)' : 'var(--red)';
-
-    document.getElementById('kProfit').textContent = `$${yearPnl.toFixed(2)}`;
-    document.getElementById('kBalance').textContent = `$${(startBal + yearPnl).toFixed(2)}`;
-    
-    // Grid
-    const grid = document.getElementById('monthGrid'); grid.innerHTML = '';
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    months.forEach((name, idx) => {
-        const mTrades = yearTrades.filter(t => new Date(t.date).getMonth() === idx);
-        const mPnl = mTrades.reduce((s, t) => s + t.profit, 0);
-        let bg = mTrades.length ? (mPnl >= 0 ? 'var(--green-bg)' : 'var(--red-bg)') : 'rgba(255,255,255,0.05)';
-        grid.innerHTML += `<div class="month-rect" style="background:${bg}" onclick="openMonth('${name}', ${idx})"><div class="month-name">${name}</div><div style="color:${mPnl>=0?'var(--green)':'var(--red)'}">${mTrades.length?'$'+mPnl.toFixed(0):'$0'}</div></div>`;
+    const grid = document.getElementById('monthGrid'); grid.innerHTML = '';
+    let yearTotal = 0, wins = 0, perfectCount = 0;
+    let profTrades = trades.filter(t => (t.profile === currentProfile || (!t.profile && currentProfile === "Main Account")));
+    let yearTrades = profTrades.filter(t => new Date(t.date).getFullYear() === selYear).sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+    // --- PAIR PERFORMANCE LOGIC ---
+    let pairData = {};
+    yearTrades.forEach(t => {
+        if (!pairData[t.pair]) pairData[t.pair] = { profit: 0, wins: 0, total: 0 };
+        pairData[t.pair].total++;
+        pairData[t.pair].profit += t.profit;
+        if (t.profit > 0) pairData[t.pair].wins++;
     });
 
-    // Charts update...
-    let run = startBal;
-    equityChart.data.labels = yearTrades.map((_,i)=>i+1);
-    equityChart.data.datasets[0].data = yearTrades.map(t => { run += t.profit; return run; });
-    equityChart.update();
+    const sortedPairs = Object.entries(pairData).sort((a, b) => b[1].profit - a[1].profit);
+    const pairTableBody = document.getElementById('pairStatsRows');
+    pairTableBody.innerHTML = '';
+
+    sortedPairs.forEach(([pair, stats]) => {
+        const wr = ((stats.wins / stats.total) * 100).toFixed(0);
+        pairTableBody.innerHTML += `
+            <tr>
+                <td style="font-weight:bold;">${pair}</td>
+                <td>${stats.total}</td>
+                <td>${wr}%</td>
+                <td style="color:${stats.profit >= 0 ? 'var(--green)' : 'var(--red)'}">$${stats.profit.toFixed(2)}</td>
+                <td><div style="width:100px; background:#1b2330; height:8px; border-radius:4px; overflow:hidden;">
+                    <div style="width:${wr}%; background:var(--blue); height:100%;"></div>
+                </div></td>
+            </tr>`;
+    });
+    document.getElementById('kBestPair').textContent = sortedPairs.length > 0 ? sortedPairs[0][0] : '-';
+
+    months.forEach((name, idx) => {
+        const mTrades = yearTrades.filter(t => new Date(t.date).getMonth() === idx);
+        const mPnl = mTrades.reduce((sum, t) => sum + t.profit, 0);
+        let bgColor = mTrades.length === 0 ? 'rgba(255, 255, 255, 0.35)' : (mPnl > 0 ? 'var(--green-bg)' : 'var(--red-bg)');
+        grid.innerHTML += `<div class="month-rect" style="background: ${bgColor}" onclick="openMonth('${name}', ${idx})"><div class="month-name">${name}</div><div class="month-pnl" style="color: ${mTrades.length===0?'white':(mPnl>=0?'var(--green)':'var(--red)')}">${mTrades.length === 0 ? '$0' : (mPnl >= 0 ? '+$'+mPnl.toFixed(2) : '-$'+Math.abs(mPnl).toFixed(2))}</div></div>`;
+    });
+
+    let startBal = Number(document.getElementById('startBalance').value);
+    let equity = [startBal], run = startBal;
+    let sessData = { 'Asian': 0, 'London': 0, 'New York': 0 };
+    yearTrades.forEach(t => { yearTotal += t.profit; run += t.profit; equity.push(run); if(t.profit > 0) wins++; if(t.mistake === 'Perfect Execution') perfectCount++; sessData[t.session] += t.profit; });
+    const kGrowth = document.getElementById('kGrowth'), kProfit = document.getElementById('kProfit'), kBalance = document.getElementById('kBalance'), kDiscipline = document.getElementById('kDiscipline');
+    kGrowth.textContent = ((yearTotal/startBal)*100).toFixed(1) + '%';
+    kProfit.textContent = `$${yearTotal.toFixed(2)}`;
+    kBalance.textContent = `$${(startBal + yearTotal).toFixed(2)}`;
+    let color = yearTotal > 0 ? "var(--green)" : (yearTotal < 0 ? "var(--red)" : "var(--text)");
+    kGrowth.style.color = color; kProfit.style.color = color; kBalance.style.color = color;
+    document.getElementById('kWin').textContent = yearTrades.length ? ((wins/yearTrades.length)*100).toFixed(1)+'%' : '0%';
+    const discPct = yearTrades.length ? ((perfectCount/yearTrades.length)*100).toFixed(0) : 100;
+    kDiscipline.textContent = discPct + '%';
+    kDiscipline.style.color = discPct >= 90 ? "var(--green)" : (discPct >= 70 ? "var(--orange)" : "var(--red)");
+    equityChart.data.labels = equity.map((_,i)=>i===0?'S':'T'+i); equityChart.data.datasets[0].data = equity; equityChart.update();
+    sessChart.data.datasets[0].data = [sessData['Asian'], sessData['London'], sessData['New York']]; sessChart.update();
+    const recentRows = document.getElementById('recentRows'); recentRows.innerHTML = '';
+    profTrades.slice(-10).reverse().forEach(t => { recentRows.innerHTML += `<tr><td>${t.date}</td><td>${t.pair}</td><td>${t.model || 'M1'}</td><td>${t.side}</td><td style="color:${t.profit>0?'var(--green)':'var(--red)'}">${t.profit}</td><td><button onclick="editTrade(${trades.indexOf(t)})">Edit</button></td></tr>`; });
 }
 
 function openMonth(name, idx) {
     const selYear = parseInt(document.getElementById('yearSwitcher').value);
     const startBal = Number(document.getElementById('startBalance').value);
-    const mTrades = trades.filter(t => t.profile === currentProfile && new Date(t.date).getFullYear() === selYear && new Date(t.date).getMonth() === idx);
+    document.getElementById('modalTitle').textContent = `${name} ${selYear}`;
+    activeMonthTrades = trades.filter(t => (t.profile === currentProfile || (!t.profile && currentProfile === "Main Account")) && new Date(t.date).getFullYear() === selYear && new Date(t.date).getMonth() === idx);
     
-    // Calculate Monthly Header
-    const mProfit = mTrades.reduce((s,t) => s + t.profit, 0);
-    let pairs = {}; mTrades.forEach(t => { pairs[t.pair] = (pairs[t.pair]||0) + t.profit; });
-    const best = Object.entries(pairs).sort((a,b)=>b[1]-a[1])[0];
+    // Calculate Monthly Stats for Popup
+    let mProfit = 0;
+    let mPairStats = {};
+    activeMonthTrades.forEach(t => {
+        mProfit += t.profit;
+        if(!mPairStats[t.pair]) mPairStats[t.pair] = 0;
+        mPairStats[t.pair] += t.profit;
+    });
+    
+    let mGrowth = (mProfit / startBal) * 100;
+    let mSortedPairs = Object.entries(mPairStats).sort((a,b) => b[1] - a[1]);
+    let mBest = mSortedPairs.length > 0 ? mSortedPairs[0][0] : '-';
 
-    document.getElementById('popMProfit').textContent = `$${mProfit.toFixed(2)}`;
-    document.getElementById('popMGrowth').textContent = ((mProfit/startBal)*100).toFixed(1) + '%';
-    document.getElementById('popMBest').textContent = best ? best[0] : '-';
+    // Update Popup KPIs
+    const pProf = document.getElementById('mPopProfit');
+    pProf.textContent = `$${mProfit.toFixed(2)}`;
+    pProf.style.color = mProfit >= 0 ? "var(--green)" : "var(--red)";
     
-    document.getElementById('modalTitle').textContent = name;
+    const pGrow = document.getElementById('mPopGrowth');
+    pGrow.textContent = `${mGrowth.toFixed(2)}%`;
+    pGrow.style.color = mGrowth >= 0 ? "var(--green)" : "var(--red)";
+    
+    document.getElementById('mPopBestPair').textContent = mBest;
+
     const rows = document.getElementById('monthRows'); rows.innerHTML = '';
-    mTrades.forEach(t => { rows.innerHTML += `<tr><td>${t.pair}</td><td>${t.date}</td><td>${t.profit}</td><td>${t.mistake}</td><td><button onclick="deleteTrade(${trades.indexOf(t)})">X</button></td></tr>`; });
+    activeMonthTrades.forEach(t => { 
+        let imgBtns = ''; if(t.imgBefore) imgBtns += `<button onclick="openLightbox('${t.imgBefore}')" style="background:#3b82f6; border:none; color:white; margin-right:5px">Setup</button>`; if(t.imgAfter) imgBtns += `<button onclick="openLightbox('${t.imgAfter}')" style="background:#22c55e; border:none; color:white">Result</button>`;
+        rows.innerHTML += `<tr><td>${t.pair}</td><td>${t.date}</td><td>${t.model || 'M1'}</td><td style="color:${t.profit>0?'var(--green)':'var(--red)'}">${t.profit}</td><td>${t.mistake}</td><td>${imgBtns || 'No Img'}</td><td><button onclick="deleteTrade(${trades.indexOf(t)})">X</button></td></tr>`; 
+    });
     document.getElementById('monthModal').style.display = 'flex';
 }
 
-function saveTrade() {
-    const t = { profile: currentProfile, pair: document.getElementById('pair').value.toUpperCase(), date: document.getElementById('date').value, profit: Number(document.getElementById('profit').value), side: document.getElementById('side').value, session: document.getElementById('session').value, mistake: document.getElementById('mistake').value };
-    trades.push(t); localStorage.setItem('trades', JSON.stringify(trades)); closePanel(); render();
+function openLightbox(data) { const lightbox = document.getElementById('imageLightbox'); const img = document.getElementById('lightboxImg'); img.src = data; img.classList.remove('zoomed'); lightbox.style.display = 'flex'; }
+function closeLightbox() { document.getElementById('imageLightbox').style.display = 'none'; }
+function toggleZoom(event) { event.stopPropagation(); const img = document.getElementById('lightboxImg'); img.classList.toggle('zoomed'); }
+
+async function saveTrade() {
+    const bFile = document.getElementById('imgBefore').files[0], aFile = document.getElementById('imgAfter').files[0];
+    let b64B = bFile ? await toBase64(bFile) : (editIndex!==null?trades[editIndex].imgBefore:null), b64A = aFile ? await toBase64(aFile) : (editIndex!==null?trades[editIndex].imgAfter:null);
+    const t = { profile: currentProfile, pair: document.getElementById('pair').value.toUpperCase(), date: document.getElementById('date').value, model: document.getElementById('model').value, profit: Number(document.getElementById('profit').value), side: document.getElementById('side').value, session: document.getElementById('session').value, mistake: document.getElementById('mistake').value, comment: document.getElementById('comment').value, imgBefore: b64B, imgAfter: b64A };
+    if (editIndex !== null) trades[editIndex] = t; else trades.push(t);
+    localStorage.setItem('trades', JSON.stringify(trades)); closePanel(); initYears(); render();
 }
 
-function closeMonthModal() { document.getElementById('monthModal').style.display = 'none'; }
+function downloadCSV() { let csv = "Pair,Date,Model,Side,P&L,Outcome,Notes\n"; activeMonthTrades.forEach(t => { csv += `${t.pair},${t.date},${t.model},${t.side},${t.profit},${t.mistake},"${t.comment.replace(/"/g, '""')}"\n`; }); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Trades_${document.getElementById('modalTitle').textContent}.csv`; a.click(); }
+function downloadJPEG() { const target = document.getElementById('captureTarget'); html2canvas(target, { backgroundColor: '#111823', scale: 2 }).then(canvas => { const link = document.createElement('a'); link.download = `Trades_${document.getElementById('modalTitle').textContent}.jpg`; link.href = canvas.toDataURL("image/jpeg", 0.9); link.click(); }); }
+function toBase64(file) { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve(reader.result); }); }
+function editTrade(idx) { const t = trades[idx]; editIndex = idx; document.getElementById('panelHeader').textContent = "Edit Trade"; document.getElementById('pair').value = t.pair; document.getElementById('date').value = t.date; document.getElementById('model').value = t.model || 'Model 1'; document.getElementById('profit').value = t.profit; document.getElementById('side').value = t.side; document.getElementById('session').value = t.session; document.getElementById('mistake').value = t.mistake; document.getElementById('comment').value = t.comment; openPanel(); }
+function deleteTrade(idx) { if(confirm('Delete trade?')) { trades.splice(idx,1); localStorage.setItem('trades',JSON.stringify(trades)); render(); closeMonthModal(); } }
 function openPanel() { document.getElementById('panel').classList.add('open'); }
-function closePanel() { document.getElementById('panel').classList.remove('open'); }
-function changeProfile() { currentProfile = document.getElementById('profileSwitcher').value; render(); }
+function closePanel() { document.getElementById('panel').classList.remove('open'); editIndex = null; document.getElementById('imgBefore').value=''; document.getElementById('imgAfter').value=''; }
+function closeMonthModal() { document.getElementById('monthModal').style.display = 'none'; }
+
+/* PROFILE MANAGEMENT FUNCTIONS */
+function changeProfile() { 
+    currentProfile = document.getElementById('profileSwitcher').value; 
+    localStorage.setItem('h_current_profile', currentProfile);
+    document.getElementById('startBalance').value = profileBalances[currentProfile] || 1000; 
+    render(); 
+}
 function updateStartBalance() { profileBalances[currentProfile] = Number(document.getElementById('startBalance').value); localStorage.setItem('h_balances', JSON.stringify(profileBalances)); render(); }
-function createProfile() { let n = prompt("Profile:"); if(n) { profiles.push(n); localStorage.setItem('h_profiles', JSON.stringify(profiles)); currentProfile=n; initProfiles(); render(); } }
+function createProfile() { let n = prompt("Profile name:"); if(n) { if(!profiles.includes(n)){ profiles.push(n); localStorage.setItem('h_profiles', JSON.stringify(profiles)); currentProfile=n; initProfiles(); render(); } else { alert("Profile already exists"); } } }
+function deleteProfile() { 
+    if(currentProfile === "Main Account") return alert("Cannot delete Main Account");
+    if(confirm(`Delete profile "${currentProfile}"? This won't delete the trades but they won't show here.`)) {
+        profiles = profiles.filter(p => p !== currentProfile);
+        localStorage.setItem('h_profiles', JSON.stringify(profiles));
+        delete profileBalances[currentProfile];
+        localStorage.setItem('h_balances', JSON.stringify(profileBalances));
+        currentProfile = "Main Account";
+        initProfiles();
+        render();
+    }
+}
 
 init();
 </script>
